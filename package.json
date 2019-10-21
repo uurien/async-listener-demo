@@ -1,0 +1,24 @@
+{
+  "name": "async-listener-demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "./node_modules/.bin/rollup -c",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ugaitz Urien",
+  "license": "ISC",
+  "dependencies": {
+    "async-listener": "^0.6.10"
+  },
+  "devDependencies": {
+    "rollup": "^1.21.4",
+    "rollup-plugin-commonjs": "^9.3.4",
+    "rollup-plugin-json": "^4.0.0",
+    "rollup-plugin-node-resolve": "^4.2.3",
+    "rollup-plugin-typescript2": "^0.24.2",
+    "rollup-pluginutils": "^2.8.2",
+    "typescript": "^3.6.3"
+  }
+}
