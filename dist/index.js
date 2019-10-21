@@ -2146,12 +2146,15 @@ function removeAsyncListener(listener) {
     }
   }
 }
-
-process.createAsyncListener = createAsyncListener;
-process.addAsyncListener    = addAsyncListener;
-process.removeAsyncListener = removeAsyncListener;
-
-var glue = wrapCallback;
+function initProcess() {
+  process.createAsyncListener = createAsyncListener;
+  process.addAsyncListener    = addAsyncListener;
+  process.removeAsyncListener = removeAsyncListener;
+}
+var glue = {
+  wrapCallback: wrapCallback,
+  initProcess: initProcess
+};
 
 var es6WrappedPromise = (Promise, ensureAslWrapper) => {
   // Updates to this class should also be applied to the the ES3 version
@@ -2193,7 +2196,9 @@ if (process.addAsyncListener) throw new Error("Don't require polyfill unless nee
 
 var wrap$2         = shimmer_1.wrap
   , massWrap$1     = shimmer_1.massWrap
+  , wrapCallback$1 = glue.wrapCallback
   ;
+glue.initProcess();
 
 var v6plus = semver.gte(process.version, '6.0.0');
 var v7plus = semver.gte(process.version, '7.0.0');
@@ -2274,7 +2279,7 @@ function wrapSetUpListenHandle(original) {
   return function () {
     this.on('connection', function (socket) {
       if (socket._handle) {
-        socket._handle.onread = glue(socket._handle.onread);
+        socket._handle.onread = wrapCallback$1(socket._handle.onread);
       }
     });
 
@@ -2284,7 +2289,7 @@ function wrapSetUpListenHandle(original) {
     finally {
       // the handle will only not be set in cases where there has been an error
       if (this._handle && this._handle.onconnection) {
-        this._handle.onconnection = glue(this._handle.onconnection);
+        this._handle.onconnection = wrapCallback$1(this._handle.onconnection);
       }
     }
   };
@@ -2296,7 +2301,7 @@ function patchOnRead(ctx) {
     if (!handle._originalOnread) {
       handle._originalOnread = handle.onread;
     }
-    handle.onread = glue(handle._originalOnread);
+    handle.onread = wrapCallback$1(handle._originalOnread);
   }
 }
 
@@ -2319,7 +2324,7 @@ wrap$2(net.Socket.prototype, 'connect', function (original) {
         ? net._normalizeArgs(arguments)
         : net._normalizeConnectArgs(arguments);
     }
-    if (args[1]) args[1] = glue(args[1]);
+    if (args[1]) args[1] = wrapCallback$1(args[1]);
     var result = original.apply(this, args);
     patchOnRead(this);
     return result;
@@ -2335,7 +2340,7 @@ wrap$2(net.Socket.prototype, 'connect', function (original) {
 wrap$2(http.Agent.prototype, 'addRequest', function (original) {
   return function (req) {
     var onSocket = req.onSocket;
-    req.onSocket = glue(function (socket) {
+    req.onSocket = wrapCallback$1(function (socket) {
       patchOnRead(socket);
       return onSocket.apply(this, arguments);
     });
@@ -2349,14 +2354,14 @@ function wrapChildProcess(child) {
   if (Array.isArray(child.stdio)) {
     child.stdio.forEach(function (socket) {
       if (socket && socket._handle) {
-        socket._handle.onread = glue(socket._handle.onread);
+        socket._handle.onread = wrapCallback$1(socket._handle.onread);
         wrap$2(socket._handle, 'close', activatorFirst);
       }
     });
   }
 
   if (child._handle) {
-    child._handle.onexit = glue(child._handle.onexit);
+    child._handle.onexit = wrapCallback$1(child._handle.onexit);
   }
 }
 
@@ -2679,7 +2684,7 @@ function wrapPromise() {
 
   function ensureAslWrapper(promise, overwrite) {
     if (!promise.__asl_wrapper || overwrite) {
-      promise.__asl_wrapper = glue(propagateAslWrapper);
+      promise.__asl_wrapper = wrapCallback$1(propagateAslWrapper);
     }
   }
 
@@ -2722,7 +2727,7 @@ function wrapPromise() {
       // continuations of the resolve or reject call using the __asl_wrapper created above.
       function bind(fn) {
         if (typeof fn !== 'function') return fn;
-        return glue(function (val) {
+        return wrapCallback$1(function (val) {
           var result = (promise.__asl_wrapper || propagateAslWrapper)(this, fn, val, next);
           if (result.error) {
             throw result.errorVal
@@ -2745,7 +2750,7 @@ function activator(fn) {
       for (var i = 0; i < arguments.length - 1; i++) {
         args[i] = arguments[i];
       }
-      args[cbIdx] = glue(arguments[cbIdx]);
+      args[cbIdx] = wrapCallback$1(arguments[cbIdx]);
     }
     return fn.apply(this, args || arguments);
   };
@@ -2754,37 +2759,37 @@ function activator(fn) {
     case 1:
       return function (cb) {
         if (arguments.length !== 1) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, cb);
       };
     case 2:
       return function (a, cb) {
         if (arguments.length !== 2) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, a, cb);
       };
     case 3:
       return function (a, b, cb) {
         if (arguments.length !== 3) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, a, b, cb);
       };
     case 4:
       return function (a, b, c, cb) {
         if (arguments.length !== 4) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, a, b, c, cb);
       };
     case 5:
       return function (a, b, c, d, cb) {
         if (arguments.length !== 5) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, a, b, c, d, cb);
       };
     case 6:
       return function (a, b, c, d, e, cb) {
         if (arguments.length !== 6) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, a, b, c, d, e, cb);
       };
     default:
@@ -2798,7 +2803,7 @@ function activatorFirst(fn) {
     var args;
     if (typeof arguments[0] === "function") {
       args = Array(arguments.length);
-      args[0] = glue(arguments[0]);
+      args[0] = wrapCallback$1(arguments[0]);
       for (var i = 1; i < arguments.length; i++) {
         args[i] = arguments[i];
       }
@@ -2810,37 +2815,37 @@ function activatorFirst(fn) {
     case 1:
       return function (cb) {
         if (arguments.length !== 1) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, cb);
       };
     case 2:
       return function (cb, a) {
         if (arguments.length !== 2) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, cb, a);
       };
     case 3:
       return function (cb, a, b) {
         if (arguments.length !== 3) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, cb, a, b);
       };
     case 4:
       return function (cb, a, b, c) {
         if (arguments.length !== 4) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, cb, a, b, c);
       };
     case 5:
       return function (cb, a, b, c, d) {
         if (arguments.length !== 5) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, cb, a, b, c, d);
       };
     case 6:
       return function (cb, a, b, c, d, e) {
         if (arguments.length !== 6) return fallback.apply(this, arguments);
-        if (typeof cb === "function") cb = glue(cb);
+        if (typeof cb === "function") cb = wrapCallback$1(cb);
         return fn.call(this, cb, a, b, c, d, e);
       };
     default:

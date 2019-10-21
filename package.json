@@ -10,7 +10,7 @@
   "author": "Ugaitz Urien",
   "license": "ISC",
   "dependencies": {
-    "async-listener": "^0.6.10"
+    "async-listener": "uurien/async-listener"
   },
   "devDependencies": {
     "rollup": "^1.21.4",

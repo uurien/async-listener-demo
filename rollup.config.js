@@ -13,8 +13,6 @@ export default {
     plugins: [
         resolve({preferBuiltins: true}),
         commonjs(),
-//        json(),
-        typescript({tsconfig: 'tsconfig.json'}),
-//        resources()
+        typescript({tsconfig: 'tsconfig.json'})
     ]
 };
